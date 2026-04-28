@@ -53,3 +53,7 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# any thing in bld
+bld
+bld/*
