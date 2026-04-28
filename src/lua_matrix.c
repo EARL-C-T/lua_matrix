@@ -6,8 +6,7 @@
 
 
 #include "../inc/lua_matrix.h"
-#include <lua5.5/lauxlib.h>
-#include <lua5.5/lua.h>
+
 
 
 
@@ -67,11 +66,15 @@ static const struct luaL_Reg matrix_func[]={
 
 static int lua_matrix_show(lua_State *L){
     mtrx *m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
-    for(int i=1; i<=m->r_cnt;i++){
-        for(int j=1;j<=m->c_cnt;j++){
-            printf(" %f",m->v[(i-1)*m->c_cnt+j]);
+    lua_Integer t=m->r_cnt*m->c_cnt ;
+    int cc=0;
+    for (int i=1;i<=t;i++){
+        cc++;
+        printf(" %f ",m->v[i]);
+        if (cc==m->c_cnt){
+            printf("\n");
+            cc=0;
         }
-        printf("\n");
     }
     return 0;
 }
