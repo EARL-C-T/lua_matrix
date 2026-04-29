@@ -6,6 +6,8 @@
 
 
 #include "../inc/lua_matrix.h"
+#include <lua5.5/lauxlib.h>
+#include <lua5.5/lua.h>
 
 
 
@@ -93,7 +95,23 @@ static int lua_matrix_setvalue(lua_State *L){
     return 0;
 }
 
+static int lua_matrix_getvalue(lua_State *L){
+    mtrx *m=(mtrx*)luaL_checkudata(L,1,"mtrxmeta");
+    lua_Integer r_id = luaL_checkinteger(L,2);
+    lua_Integer c_id =luaL_checkinteger(L,3);
+    if(r_id>m->r_cnt || c_id>m->c_cnt || c_id<0 || r_id<0){
+        lua_pushstring(L,"one or both of the supplyed index(s) are invalid\n" );
+        lua_error(L);
+    }
+    lua_pushnumber(L, m->v[(r_id-1)*m->c_cnt+c_id]);
+    return 1;
+}
 
+static int lua_matrix_lens(lua_State *L){
+    mtrx* m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
+    printf("%lld x %lld\n",m->r_cnt,m->c_cnt);
+    return 0;
+}
 
 /* this adds a number to the matrix  the result is the supplied matrix updated m:scaler_add( scaler) */
 static int lua_matrix_scaler_add(lua_State *L){
@@ -156,8 +174,10 @@ static int lua_matrix_mult(lua_State *L){
 
 static const struct luaL_Reg mtrx_meta_methods[]={
     {"show",lua_matrix_show},
+    {"lens",lua_matrix_lens},
     {"setval",lua_matrix_setvalue},
-     {"scl_add",lua_matrix_scaler_add},
+    {"getval",lua_matrix_getvalue},
+    {"scl_add",lua_matrix_scaler_add},
     {"add",lua_matrix_add},
     {"mul",lua_matrix_mult},
     {NULL,NULL}
