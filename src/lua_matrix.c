@@ -225,6 +225,7 @@ static int lua_matrix_mult(lua_State *L){
 
 static const struct luaL_Reg mtrx_meta_methods[]={
     {"show",lua_matrix_show},
+    {"show_octave",lua_matrix_show_octave},
     {"lens",lua_matrix_lens},
     {"setval",lua_matrix_setvalue},
     {"getval",lua_matrix_getvalue},
