@@ -5,11 +5,17 @@
  */
 
 
-#include "../inc/lua_matrix.h"
+
 #include <lua5.5/lauxlib.h>
 #include <lua5.5/lua.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-
+typedef struct matrix{
+    lua_Integer r_cnt;
+    lua_Integer c_cnt;
+    lua_Number v[];
+}mtrx;
 
 
 
@@ -33,6 +39,7 @@ static int lua_matrix_mk(lua_State *L){
    lua_setmetatable(L,-2 );
    return 1;
 }
+
 static int lua_matrix_mkfull(lua_State *L){
     if(3!=lua_gettop(L)){
         lua_pushstring(L,"must supply row count and colum count");
@@ -60,9 +67,35 @@ static int lua_matrix_mkfull(lua_State *L){
     lua_setmetatable(L,-2 );
    return 1;
 }
+
+static int lua_matrix_mkrand(lua_State *L){
+    lua_Integer r_cnt , c_cnt, t;
+    if(!lua_isinteger(L,1 ) || !lua_isinteger(L,2)){
+        r_cnt =(lua_Integer)100/rand();
+        c_cnt=(lua_Integer)100/rand();
+        printf("dimensions where not supplyed so the will be randomized \n %lld  X  %lld \n",r_cnt,c_cnt);
+    }else{
+        r_cnt=luaL_checkinteger(L,1 );
+        c_cnt=luaL_checkinteger(L,2 );
+    }
+    t=r_cnt*c_cnt;
+
+
+    mtrx *m=(mtrx*)lua_newuserdata(L,sizeof(mtrx)+sizeof(lua_Number)*t );
+    m->r_cnt=r_cnt;
+    m->c_cnt=c_cnt;
+    for(int i=1;i<=t;i++){
+        m->v[i]=1.0/rand();
+    }
+    luaL_getmetatable(L,"mtrxmeta" );
+    lua_setmetatable(L,-2 );
+    return 1;
+
+}
 static const struct luaL_Reg matrix_func[]={
     {"mk",lua_matrix_mk},
     {"mk_full",lua_matrix_mkfull},
+    {"mk_rand",lua_matrix_mkrand},
     {NULL,NULL}
 };
 
@@ -79,6 +112,24 @@ static int lua_matrix_show(lua_State *L){
         }
     }
     return 0;
+}
+static int lua_matrix_show_octave(lua_State *L){
+    mtrx *m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
+    lua_Integer t=m->r_cnt*m->c_cnt ;
+    int cc=0;
+    printf("[ ");
+    for (int i=1;i<=t;i++){
+        cc++;
+        if(cc!=m->c_cnt && i!=t){
+        printf(" %f ,",m->v[i]);
+        }else if(cc==m->c_cnt && i!=t ){
+            printf(" %f ;\n",m->v[i]);
+            cc=0;
+        }else if(cc==m->c_cnt && i==t){
+            printf(" %f ]\n",m->v[i]);
+        }
+    }
+        return 0;
 }
 
 static int lua_matrix_setvalue(lua_State *L){
