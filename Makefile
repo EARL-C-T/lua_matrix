@@ -1,9 +1,10 @@
 CC= gcc
-INC= -I/usr/include/lua5.5/ -I/home/et/Desktop/lua_matrix/inc
-CFLAGS = -Wall -O2 -fPIC -shared
+INC= -I/usr/include/lua5.5/
+CFLAGS= -Wall -O3 -fPIC -shared
+DBGFLAGS = -Wall -g -O0 -fPIC -shared
 BUILD= bld/
 SRC= src/
-
+DBG= dbg/
 
 all: $(BUILD)lua_matrix.so $(BUILD)add_test.lua
 
@@ -15,5 +16,13 @@ $(BUILD)lua_matrix.so:$(SRC)lua_matrix.c $(BUILD)
 $(BUILD):
 	mkdir $(BUILD)
 
-clean: $(BUILD)
+clean: $(BUILD) $(DBG)
 	rm -R $(BUILD)
+	rm -R $(DBG)
+
+debug:$(DBG)lua_matrix.so
+
+$(DBG)lua_matrix.so:$(SRC)lua_matrix.c $(DBG)
+	$(CC) $(DBGFLAGS) $(INC) -o $@ $<
+$(DBG):
+	mkdir $(DBG)

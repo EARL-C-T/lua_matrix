@@ -10,6 +10,7 @@
 #include <lua5.5/lua.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 typedef struct matrix{
     lua_Integer r_cnt;
@@ -58,9 +59,7 @@ static int lua_matrix_mkfull(lua_State *L){
     M->r_cnt=r_cnt;
     for(int i=1;i<=t;i++){
         lua_rawgeti(L,3,i);
-
         M->v[i]=luaL_checknumber(L,-1 );
-        printf("%f\n",M->v[i]);
        lua_pop(L,1);
     }
     luaL_getmetatable(L,"mtrxmeta" );
@@ -70,9 +69,12 @@ static int lua_matrix_mkfull(lua_State *L){
 
 static int lua_matrix_mkrand(lua_State *L){
     lua_Integer r_cnt , c_cnt, t;
-    if(!lua_isinteger(L,1 ) || !lua_isinteger(L,2)){
-        r_cnt =(lua_Integer)100/rand();
-        c_cnt=(lua_Integer)100/rand();
+    srand(time(0));
+    if(!lua_isinteger(L,1 ) && !lua_isinteger(L,2)){
+        r_cnt =(lua_Integer)rand()%10;
+        c_cnt=(lua_Integer)rand()%10;
+        (c_cnt==0)?c_cnt=1:c_cnt;
+        (r_cnt==0)?r_cnt=1:r_cnt;
         printf("dimensions where not supplyed so the will be randomized \n %lld  X  %lld \n",r_cnt,c_cnt);
     }else{
         r_cnt=luaL_checkinteger(L,1 );
@@ -85,7 +87,7 @@ static int lua_matrix_mkrand(lua_State *L){
     m->r_cnt=r_cnt;
     m->c_cnt=c_cnt;
     for(int i=1;i<=t;i++){
-        m->v[i]=1.0/rand();
+        m->v[i]=(lua_Number)rand();
     }
     luaL_getmetatable(L,"mtrxmeta" );
     lua_setmetatable(L,-2 );
@@ -105,15 +107,39 @@ static int lua_matrix_show(lua_State *L){
     int cc=0;
     for (int i=1;i<=t;i++){
         cc++;
+        if(cc<m->c_cnt){
         printf(" %f ",m->v[i]);
-        if (cc==m->c_cnt){
-            printf("\n");
+        }else if (cc==m->c_cnt){
+            printf(" %f \n",m->v[i]);
             cc=0;
         }
     }
     return 0;
 }
-static int lua_matrix_show_octave(lua_State *L){
+/*this takes a file name as an argument file must already exist*/
+static int lua_matrix_print(lua_State *L){
+    mtrx* m=luaL_checkudata(L,1 ,"mtrxmeta" );
+    const char *o=luaL_checkstring(L,2 );
+    FILE* f=fopen(o,"a" );
+    lua_Integer t=m->r_cnt*m->c_cnt ;
+    int cc=0;
+    for (int i=1;i<=t;i++){
+        cc++;
+        if(cc<m->c_cnt){
+            fprintf(f," %f ",m->v[i]);
+        }else if (cc==m->c_cnt){
+            fprintf(f," %f \n",m->v[i]);
+            cc=0;
+        }
+
+    }
+    fprintf(f,"\n\n");
+    fclose(f);
+    return 0;
+}
+
+
+static int lua_matrix_show_ml(lua_State *L){
     mtrx *m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
     lua_Integer t=m->r_cnt*m->c_cnt ;
     int cc=0;
@@ -132,6 +158,30 @@ static int lua_matrix_show_octave(lua_State *L){
         return 0;
 }
 
+static int lua_matrix_print_ml(lua_State *L){
+    mtrx* m=luaL_checkudata(L,1 ,"mtrxmeta" );
+    const char *o=luaL_checkstring(L,2 );
+    FILE* f=fopen(o,"a" );
+    lua_Integer t=m->r_cnt*m->c_cnt ;
+    fprintf(f,"[ ");
+    int cc=0;
+    for (int i=1;i<=t;i++){
+        cc++;
+        if(cc!=m->c_cnt && i!=t){
+            fprintf(f," %f ,",m->v[i]);
+        }else if(cc==m->c_cnt && i!=t ){
+            fprintf(f," %f ;\n",m->v[i]);
+            cc=0;
+        }else if(cc==m->c_cnt && i==t){
+            fprintf(f," %f ]\n",m->v[i]);
+        }
+
+    }
+    fprintf(f,"\n\n");
+    fclose(f);
+    return 0;
+}
+
 static int lua_matrix_setvalue(lua_State *L){
     mtrx *m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
     lua_Integer r_id =luaL_checkinteger(L,2 );
@@ -145,6 +195,46 @@ static int lua_matrix_setvalue(lua_State *L){
     m->v[(r_id-1)*m->c_cnt+c_id]=val;
     return 0;
 }
+
+static int lua_matrix_showrow(lua_State *L){
+    mtrx *m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
+    lua_Integer r_idx =luaL_checkinteger(L,2 );
+    if(m->r_cnt<r_idx || 0>=r_idx){
+        lua_pushstring(L,"supplied index is out of range must be int between 0 and r_cnt\n" );
+        lua_error(L);
+    }
+    int srt, stp;
+    srt=(r_idx-1)*m->c_cnt+1;
+    stp = srt+m->c_cnt-1;
+    for(int i=srt;i<=stp;i++){
+        if(i==stp){
+            printf(" %f\n",m->v[i]);
+        }else{
+          printf(" %f ",m->v[i]);
+        }
+    }
+    return 0;
+}
+
+static int lua_matrix_getrow(lua_State *L){
+    mtrx *m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
+    lua_Integer r_idx =luaL_checkinteger(L,2 );
+    if(m->r_cnt<r_idx || 0>=r_idx){
+        lua_pushstring(L,"supplied index is out of range must be int between 0 and r_cnt\n" );
+        lua_error(L);
+    }
+    int srt, stp;
+    lua_newtable(L);
+    srt=(r_idx-1)*m->c_cnt+1;
+    stp = srt+m->c_cnt-1;
+    for(int i=srt;i<=stp;i++){
+        lua_pushnumber(L,m->v[i] );
+        lua_rawseti(L,-2,lua_rawlen(L,-2)+1);
+
+    }
+   return 1;
+}
+
 
 static int lua_matrix_getvalue(lua_State *L){
     mtrx *m=(mtrx*)luaL_checkudata(L,1,"mtrxmeta");
@@ -161,7 +251,9 @@ static int lua_matrix_getvalue(lua_State *L){
 static int lua_matrix_lens(lua_State *L){
     mtrx* m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
     printf("%lld x %lld\n",m->r_cnt,m->c_cnt);
-    return 0;
+    lua_pushinteger(L,m->r_cnt );
+    lua_pushinteger(L,m->c_cnt );
+    return 2;
 }
 
 /* this adds a number to the matrix  the result is the supplied matrix updated m:scaler_add( scaler) */
@@ -189,13 +281,33 @@ static int lua_matrix_add(lua_State *L){
     M->r_cnt=m->r_cnt;
     for(int i=1;i<=t;i++){
         M->v[i]=m->v[i]+n->v[i];
-        printf("%d %f + %f = %f \n",i,m->v[i],n->v[i],M->v[i]);
 
     }
     luaL_getmetatable(L,"mtrxmeta" );
     lua_setmetatable(L,-2 );
     return 1;
 }
+static int lua_matrix_sub(lua_State *L){
+    mtrx* m=(mtrx*)luaL_checkudata(L,1 ,"mtrxmeta" );
+    mtrx* n=(mtrx*)luaL_checkudata(L,2 ,"mtrxmeta" );
+    if(m->r_cnt!=n->r_cnt ||m->c_cnt!=n->c_cnt){
+        lua_pushstring(L,"both matrix must be the same size" );
+        lua_error(L);
+    }
+    lua_Integer t = m->r_cnt*m->c_cnt;
+
+    mtrx* M=(mtrx*)lua_newuserdata(L,sizeof(mtrx)+sizeof(lua_Number)*t);
+    M->c_cnt=m->c_cnt;
+    M->r_cnt=m->r_cnt;
+    for(int i=1;i<=t;i++){
+        M->v[i]=m->v[i]-n->v[i];
+
+    }
+    luaL_getmetatable(L,"mtrxmeta" );
+    lua_setmetatable(L,-2 );
+    return 1;
+}
+
 /*returns a new matrix of the dimensions number of rows as the fist number of collums of the secoend and the number of colluams
  *in the first must be equal to number of rows in the second*/
 static int lua_matrix_mult(lua_State *L){
@@ -222,16 +334,33 @@ static int lua_matrix_mult(lua_State *L){
     return 1;
 
 }
+/*static int lua_matrix_invrt_2x2(lua_State *L){
+    mtrx *m=(mtrx*)luaL_checkudata(L,1,"mtrxmeta");
+    if(m->c_cnt!=2 || m->r_cnt!=2){
+        lua_pushstring(L,"matrix must be of size 2X2\n" );
+        lua_error(L);
+    }
+    m->v[4]=m->v[1];
+    m->v[1]=m->v[4];
+    m->v[2]=-m->v[2];
+    m->v[3]=-m->v[3];
+
+    return 0;
+}*/
 
 static const struct luaL_Reg mtrx_meta_methods[]={
     {"show",lua_matrix_show},
-    {"show_octave",lua_matrix_show_octave},
+    {"print",lua_matrix_print},
+    {"show_ml",lua_matrix_show_ml},
+    {"print_ml",lua_matrix_print_ml},
     {"lens",lua_matrix_lens},
     {"setval",lua_matrix_setvalue},
     {"getval",lua_matrix_getvalue},
     {"scl_add",lua_matrix_scaler_add},
     {"add",lua_matrix_add},
+    {"sub",lua_matrix_sub},
     {"mul",lua_matrix_mult},
+    {"getrow",lua_matrix_getrow},
     {NULL,NULL}
 };
 
